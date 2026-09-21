@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>امتحان السرعة والعجلة - Speed and Acceleration</title>
+    <meta name="description" content="امتحان تفاعلي شامل عن السرعة والعجلة - فيزياء الصف التاسع العام">
+    <meta name="author" content="Mr. Mohammed Hesham">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        body.en-mode { font-family: 'Inter', sans-serif; }
+        .correct { background-color: #dcfce7 !important; border-color: #16a34a !important; }
+        .incorrect { background-color: #fee2e2 !important; border-color: #dc2626 !important; }
+        .timer-warning { color: #dc2626 !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { opacity: 0.7; } }
+        @media print { .no-print { display: none !important; } }
+        .success-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.875rem; }
+        .grade-excellent { background: #dcfce7; color: #166534; }
+        .grade-good { background: #fef3c7; color: #92400e; }
+        .grade-pass { background: #dbeafe; color: #1e40af; }
+        .grade-fail { background: #fee2e2; color: #991b1b; }
+        .lang-switch {
+            position: fixed; top: 16px; left: 16px; z-index: 100;
+            background: white; padding: 6px; border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; gap: 4px;
+            border: 2px solid #dc2626;
+        }
+        [dir="ltr"] .lang-switch { left: auto; right: 16px; }
+        .lang-btn {
+            padding: 6px 14px; border-radius: 20px; cursor: pointer; font-weight: bold;
+            transition: all 0.3s; border: none; font-size: 0.875rem;
+            background: transparent; color: #6b7280;
+        }
+        .lang-btn.active { background: #dc2626; color: white; box-shadow: 0 2px 6px rgba(220,38,38,0.4); }
+        .lang-btn:hover:not(.active) { background: #fef2f2; color: #dc2626; }
+        .shuffle-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #dc2626, #ef4444);
+            color: white; padding: 4px 12px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: bold; margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        .math-display {
+            display: inline-block; direction: ltr;
+            font-family: 'Times New Roman', 'Cambria Math', serif;
+            font-size: 1.15em; font-style: italic;
+            padding: 2px 8px; background: #fef2f2;
+            border-radius: 6px; margin: 2px;
+            color: #dc2626; font-weight: 600; letter-spacing: 0.5px;
+        }
+        .save-indicator {
+            position: fixed; bottom: 20px; left: 20px; z-index: 200;
+            background: #10b981; color: white; padding: 8px 16px;
+            border-radius: 20px; font-size: 0.8rem; font-weight: bold;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.4);
+        }
+        .save-indicator.show { opacity: 1; }
+        .formula-box {
+            background: #fef2f2; border: 2px solid #f87171;
+            border-radius: 8px; padding: 12px; margin: 10px 0;
+            font-family: 'Times New Roman', serif;
+            direction: ltr; text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-red-50 to-orange-50 text-gray-800 p-4 md:p-8 min-h-screen">
+
+    <div class="lang-switch no-print">
+        <button class="lang-btn active" onclick="setLanguage('ar')" id="btn-ar">عربي</button>
+        <button class="lang-btn" onclick="setLanguage('en')" id="btn-en">EN</button>
+    </div>
+
+    <div id="saveIndicator" class="save-indicator">💾 <span data-ar="تم الحفظ" data-en="Saved">تم الحفظ</span></div>
+
+    <div id="timer-container" class="max-w-4xl mx-auto mb-4 text-center no-print">
+        <div class="bg-white p-4 rounded-2xl shadow-md inline-block border-2 border-red-100">
+            <span class="text-gray-600 ml-2" data-ar="الوقت المتبقي:" data-en="Time Remaining:">⏰ الوقت المتبقي:</span>
+            <span id="timer" class="text-2xl font-bold text-red-600 font-mono">60:00</span>
+            <span class="shuffle-badge" data-ar="🎲 أسئلة عشوائية" data-en="🎲 Random Questions">🎲 أسئلة عشوائية</span>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto mb-6 flex flex-wrap gap-3 justify-center no-print">
+        <button onclick="toggleAnswers()" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl font-medium transition shadow cursor-pointer" data-ar="👀 إظهار / إخفاء الإجابات" data-en="👀 Show / Hide Answers">👀 إظهار / إخفاء الإجابات</button>
+        <button onclick="window.print()" class="bg-gray-700 hover:bg-gray-900 text-white px-5 py-2 rounded-xl font-medium transition shadow cursor-pointer" data-ar="🖨️ طباعة" data-en="🖨️ Print">️ طباعة</button>
+        <button onclick="reshuffleExam()" class="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-5 py-2 rounded-xl font-medium transition shadow cursor-pointer" data-ar="🔄 أسئلة جديدة" data-en="🔄 New Questions">🔄 أسئلة جديدة</button>
+        <button onclick="clearProgress()" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-xl font-medium transition shadow cursor-pointer" data-ar="️ مسح التقدم" data-en="🗑️ Clear Progress">🗑️ مسح التقدم</button>
+    </div>
+
+    <header class="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-lg mb-8 border-4 border-red-400">
+        <div class="text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2" data-ar="📐 السرعة والعجلة" data-en="📐 Speed and Acceleration"> السرعة والعجلة</h1>
+            <h2 class="text-lg text-red-600 font-semibold" data-ar="الصف التاسع العام (فيزياء)" data-en="Grade 9 General (Physics)">الصف التاسع العام (فيزياء)</h2>
+            <p class="text-sm text-gray-600 mt-2" data-ar="السرعة المتوسطة، السرعة اللحظية، العجلة، الحركة المتسارعة" data-en="Average Speed, Instantaneous Speed, Acceleration, Accelerated Motion">السرعة المتوسطة، السرعة اللحظية، العجلة، الحركة المتسارعة</p>
+            <p class="text-xs text-green-600 mt-2 font-semibold" data-ar="💾 يتم حفظ تقدمك تلقائياً - 20 سؤالاً في 5 أقسام" data-en="💾 Your progress is saved automatically - 20 questions in 5 sections">💾 يتم حفظ تقدمك تلقائياً - 20 سؤالاً في 5 أقسام</p>
+        </div>
+        <div class="mt-4 flex flex-wrap justify-center gap-4 text-sm text-gray-600">
+            <span><span data-ar="📅 التاريخ:" data-en="📅 Date:"> التاريخ:</span> <input type="text" id="examDate" class="border-b-2 border-red-300 bg-transparent w-28 text-center"></span>
+            <span><span data-ar="😊 الاسم:" data-en="😊 Name:">😊 الاسم:</span> <input type="text" id="studentName" class="border-b-2 border-red-300 bg-transparent w-32 text-center" placeholder="اكتب اسمك"></span>
+            <span><span data-ar="🏫 الشعبة:" data-en="🏫 Class:">🏫 الشعبة:</span> <input type="text" id="studentClass" class="border-b-2 border-red-300 bg-transparent w-28 text-center" placeholder="الشعبة"></span>
+            <span><span data-ar="⏰ المدة: 60 دقيقة" data-en=" Duration: 60 min">⏰ المدة: 60 دقيقة</span></span>
+            <span><span data-ar="📊 المجموع: 100 درجة" data-en="📊 Total: 100 pts"> المجموع: 100 درجة</span></span>
+        </div>
+    </header>
+
+    <div class="max-w-4xl mx-auto mb-6 bg-white p-4 rounded-xl shadow-md border-2 border-red-200 no-print">
+        <h3 class="font-bold text-lg mb-3 text-red-700 text-center" data-ar="📐 الصيغ الأساسية" data-en="📐 Key Formulae">📐 الصيغ الأساسية</h3>
+        <div class="grid md:grid-cols-2 gap-3 text-sm">
+            <div class="formula-box"><strong>Speed:</strong> v = d/t</div>
+            <div class="formula-box"><strong>Acceleration:</strong> a = (v_f - v_i)/t</div>
+            <div class="formula-box"><strong>v_f² = v_i² + 2ad</strong></div>
+            <div class="formula-box"><strong>d = v_i·t + ½at²</strong></div>
+        </div>
+    </div>
+
+    <main class="max-w-4xl mx-auto space-y-8" id="exam-content"></main>
+
+    <div class="text-center no-print pb-8 mt-8">
+        <button onclick="gradeExam()" class="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white text-lg px-10 py-4 rounded-2xl font-bold shadow-xl transition transform hover:scale-105 cursor-pointer" data-ar="🎯 صحح إجاباتي!" data-en="🎯 Grade My Answers!"> صحح إجاباتي!</button>
+    </div>
+
+    <div id="results-panel" class="max-w-4xl mx-auto mt-8 bg-white p-8 rounded-2xl shadow-2xl border-4 border-red-400 hidden no-print">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center" data-ar="🏆 نتيجتك يا بطل! 🏆" data-en=" Your Results, Champion! 🏆"> نتيجتك يا بطل! 🏆</h2>
+        <div class="grid md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-red-50 p-4 rounded-xl text-center"><p data-ar="😊 الاسم" data-en="😊 Name">😊 الاسم</p><p id="res-name" class="font-bold text-xl text-red-700">-</p></div>
+            <div class="bg-orange-50 p-4 rounded-xl text-center"><p data-ar="📅 التاريخ" data-en="📅 Date">📅 التاريخ</p><p id="res-date" class="font-bold text-xl text-orange-700">-</p></div>
+            <div class="bg-red-50 p-4 rounded-xl text-center"><p data-ar="🌟 المجموع" data-en="🌟 Score"> المجموع</p><p id="res-total" class="font-bold text-3xl text-red-600">0 / 100</p></div>
+        </div>
+        <div class="text-center mb-6">
+            <span id="success-badge" class="success-badge grade-excellent">-</span>
+            <p id="success-percent" class="text-4xl font-bold text-red-600 mt-2">0%</p>
+            <p class="text-sm text-gray-500" data-ar="نسبة النجاح" data-en="Success Rate">نسبة النجاح</p>
+        </div>
+        <div class="bg-gray-50 p-6 rounded-xl mb-6">
+            <h3 class="font-bold text-lg mb-4 text-gray-800" data-ar="📊 أدائك في كل قسم:" data-en="📊 Your Performance:">📊 أدائك في كل قسم:</h3>
+            <div class="space-y-3" id="sections-performance"></div>
+        </div>
+        <div class="text-center mb-6">
+            <button id="sendEmailBtn" onclick="sendResultsToEmail()" class="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white text-lg px-8 py-3 rounded-2xl font-bold shadow-xl transition transform hover:scale-105 cursor-pointer" data-ar="📧 أرسل النتيجة للمعلم" data-en=" Send Results to Teacher">📧 أرسل النتيجة للمعلم</button>
+            <p id="emailStatus" class="text-sm mt-2 text-center font-medium"></p>
+        </div>
+        <div class="flex gap-3 justify-center">
+            <button onclick="window.print()" class="bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold" data-ar="🖨️ طباعة النتيجة" data-en="️ Print Results">🖨️ طباعة النتيجة</button>
+        </div>
+    </div>
+
+    <footer class="max-w-4xl mx-auto mt-10 mb-8 text-center text-gray-500 text-sm no-print">
+        © <span data-ar="السرعة والعجلة" data-en="Speed and Acceleration">السرعة والعجلة</span> | Mr. Mohammed Hesham 📐
+    </footer>
+
+<script>
+const PUBLIC_KEY = "Rb3Lq8tXaFmc5YHUH";
+const SERVICE_ID = "service_w15m64i";
+const TEMPLATE_ID = "template_5b0u2tq";
+const TARGET_EMAIL = "mohammedhesham872@gmail.com";
+emailjs.init(PUBLIC_KEY);
+
+const STORAGE_KEY = 'speed_acceleration_grade9_exam_v1';
+const TOTAL_TIME = 3600;
+const TOTAL_QUESTIONS = 20;
+const TOTAL_SECTIONS = 5;
+const QUESTIONS_PER_SECTION = 4;
+
+let currentSeed = null;
+let answersVisible = false;
+let saveIndicatorTimeout = null;
+
+function mulberry32(a) {
+    return function() {
+        var t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+let rng = null;
+
+function showSaveIndicator() {
+    const indicator = document.getElementById('saveIndicator');
+    indicator.classList.add('show');
+    if (saveIndicatorTimeout) clearTimeout(saveIndicatorTimeout);
+    saveIndicatorTimeout = setTimeout(() => indicator.classList.remove('show'), 1500);
+}
+
+function saveState(showIndicator = true) {
+    try {
+        const state = {
+            seed: currentSeed, lang: currentLang,
+            studentName: document.getElementById('studentName').value,
+            studentClass: document.getElementById('studentClass').value,
+            examDate: document.getElementById('examDate').value,
+            answers: getSelectedAnswers(),
+            timeRemaining: timeRemaining,
+            answersVisible: answersVisible, savedAt: Date.now()
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if (showIndicator) showSaveIndicator();
+    } catch (e) { console.error('خطأ في الحفظ:', e); }
+}
+
+function loadState() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved);
+    } catch (e) { console.error('خطأ في التحميل:', e); }
+    return null;
+}
+
+function getSelectedAnswers() {
+    const answers = {};
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        if (selected) answers[i] = selected.value;
+    }
+    return answers;
+}
+
+function restoreAnswers(answers) {
+    if (!answers) return;
+    for (const [idx, val] of Object.entries(answers)) {
+        const radio = document.querySelector(`input[name="q${idx}"][value="${val}"]`);
+        if (radio) radio.checked = true;
+    }
+}
+
+function clearProgress() {
+    const confirmMsg = currentLang === 'ar' ? '⚠️ هل أنت متأكد من مسح كل التقدم؟' : '⚠️ Are you sure you want to clear all progress?';
+    if (confirm(confirmMsg)) { localStorage.removeItem(STORAGE_KEY); location.reload(); }
+}
+
+function setupAnswerListeners() {
+    document.getElementById('exam-content').addEventListener('change', (e) => {
+        if (e.target.type === 'radio') saveState();
+    });
+}
+
+function setupInputListeners() {
+    ['studentName', 'studentClass', 'examDate'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => saveState(false));
+            el.addEventListener('blur', () => saveState());
+        }
+    });
+}
+
+const originalExamData = {
+    sections: [
+        {
+            id: 'sec1',
+            title: { ar: ' الجزء 1: السرعة المتوسطة', en: '🔹 Part 1: Average Speed' },
+            questions: [
+                {
+                    q: { ar: 'سيارة تقطع مسافة 120 كم في ساعتين. ما سرعتها المتوسطة؟', en: 'A car travels 120 km in 2 hours. What is its average speed?' },
+                    options: [
+                        { ar: '<span class="math-display">60 km/h</span>', en: '<span class="math-display">60 km/h</span>' },
+                        { ar: '<span class="math-display">120 km/h</span>', en: '<span class="math-display">120 km/h</span>' },
+                        { ar: '<span class="math-display">240 km/h</span>', en: '<span class="math-display">240 km/h</span>' },
+                        { ar: '<span class="math-display">30 km/h</span>', en: '<span class="math-display">30 km/h</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'السرعة المتوسطة = المسافة ÷ الزمن = 120 ÷ 2 = 60 كم/ساعة', en: 'Average speed = distance ÷ time = 120 ÷ 2 = 60 km/h' }
+                },
+                {
+                    q: { ar: 'إذا تحرك جسم بسرعة <span class="math-display">15 m/s</span> لمدة <span class="math-display">4 s</span>، فما المسافة المقطوعة؟', en: 'If an object moves at <span class="math-display">15 m/s</span> for <span class="math-display">4 s</span>, what distance is covered?' },
+                    options: [
+                        { ar: '<span class="math-display">60 m</span>', en: '<span class="math-display">60 m</span>' },
+                        { ar: '<span class="math-display">15 m</span>', en: '<span class="math-display">15 m</span>' },
+                        { ar: '<span class="math-display">4 m</span>', en: '<span class="math-display">4 m</span>' },
+                        { ar: '<span class="math-display">19 m</span>', en: '<span class="math-display">19 m</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'المسافة = السرعة × الزمن = 15 × 4 = 60 m', en: 'Distance = speed × time = 15 × 4 = 60 m' }
+                },
+                {
+                    q: { ar: 'راكب دراجة يقطع 300 متر في دقيقة واحدة. ما سرعته المتوسطة بوحدة m/s؟', en: 'A cyclist covers 300 meters in one minute. What is their average speed in m/s?' },
+                    options: [
+                        { ar: '<span class="math-display">5 m/s</span>', en: '<span class="math-display">5 m/s</span>' },
+                        { ar: '<span class="math-display">300 m/s</span>', en: '<span class="math-display">300 m/s</span>' },
+                        { ar: '<span class="math-display">60 m/s</span>', en: '<span class="math-display">60 m/s</span>' },
+                        { ar: '<span class="math-display">1 m/s</span>', en: '<span class="math-display">1 m/s</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'الزمن = 60 ثانية. السرعة = 300 ÷ 60 = 5 m/s', en: 'Time = 60 seconds. Speed = 300 ÷ 60 = 5 m/s' }
+                },
+                {
+                    q: { ar: 'ما الصيغة التي تربط السرعة والمسافة والزمن؟', en: 'What is the formula linking speed, distance and time?' },
+                    options: [
+                        { ar: '<span class="math-display">v = d/t</span>', en: '<span class="math-display">v = d/t</span>' },
+                        { ar: '<span class="math-display">v = d × t</span>', en: '<span class="math-display">v = d × t</span>' },
+                        { ar: '<span class="math-display">v = t/d</span>', en: '<span class="math-display">v = t/d</span>' },
+                        { ar: '<span class="math-display">v = d + t</span>', en: '<span class="math-display">v = d + t</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'السرعة = المسافة  الزمن', en: 'Speed = distance ÷ time' }
+                }
+            ]
+        },
+        {
+            id: 'sec2',
+            title: { ar: '🔹 الجزء 2: العجلة (التسارع)', en: '🔹 Part 2: Acceleration' },
+            questions: [
+                {
+                    q: { ar: 'سيارة تزيد سرعتها من <span class="math-display">0 m/s</span> إلى <span class="math-display">20 m/s</span> في <span class="math-display">5 s</span>. ما العجلة؟', en: 'A car increases speed from <span class="math-display">0 m/s</span> to <span class="math-display">20 m/s</span> in <span class="math-display">5 s</span>. What is the acceleration?' },
+                    options: [
+                        { ar: '<span class="math-display">4 m/s²</span>', en: '<span class="math-display">4 m/s²</span>' },
+                        { ar: '<span class="math-display">20 m/s²</span>', en: '<span class="math-display">20 m/s²</span>' },
+                        { ar: '<span class="math-display">5 m/s²</span>', en: '<span class="math-display">5 m/s²</span>' },
+                        { ar: '<span class="math-display">100 m/s²</span>', en: '<span class="math-display">100 m/s²</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'العجلة = (السرعة النهائية - السرعة الابتدائية) ÷ الزمن = (20-0)÷5 = 4 m/s²', en: 'Acceleration = (final velocity - initial velocity) ÷ time = (20-0)÷5 = 4 m/s²' }
+                },
+                {
+                    q: { ar: 'إذا كانت العجلة سالبة، ماذا يعني ذلك؟', en: 'If acceleration is negative, what does that mean?' },
+                    options: [
+                        { ar: 'الجسم يتباطأ (ينقص سرعته)', en: 'The object is slowing down (decelerating)' },
+                        { ar: 'الجسم يسرع', en: 'The object is speeding up' },
+                        { ar: 'الجسم ثابت', en: 'The object is stationary' },
+                        { ar: 'الجسم يتحرك بسرعة ثابتة', en: 'The object moves at constant speed' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'العجلة السالبة تعني أن الجسم يتباطأ أو ينقص سرعته', en: 'Negative acceleration means the object is slowing down or decelerating' }
+                },
+                {
+                    q: { ar: 'جسم يتحرك بسرعة ابتدائية <span class="math-display">10 m/s</span> ويتسارع بمقدار <span class="math-display">2 m/s²</span> لمدة <span class="math-display">3 s</span>. ما سرعته النهائية؟', en: 'An object moves at initial speed <span class="math-display">10 m/s</span> and accelerates at <span class="math-display">2 m/s²</span> for <span class="math-display">3 s</span>. What is its final speed?' },
+                    options: [
+                        { ar: '<span class="math-display">16 m/s</span>', en: '<span class="math-display">16 m/s</span>' },
+                        { ar: '<span class="math-display">6 m/s</span>', en: '<span class="math-display">6 m/s</span>' },
+                        { ar: '<span class="math-display">12 m/s</span>', en: '<span class="math-display">12 m/s</span>' },
+                        { ar: '<span class="math-display">10 m/s</span>', en: '<span class="math-display">10 m/s</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'v_f = v_i + at = 10 + (2×3) = 16 m/s', en: 'v_f = v_i + at = 10 + (2×3) = 16 m/s' }
+                },
+                {
+                    q: { ar: 'ما وحدة قياس العجلة في النظام الدولي؟', en: 'What is the unit of acceleration in SI?' },
+                    options: [
+                        { ar: '<span class="math-display">m/s²</span>', en: '<span class="math-display">m/s²</span>' },
+                        { ar: '<span class="math-display">m/s</span>', en: '<span class="math-display">m/s</span>' },
+                        { ar: '<span class="math-display">km/h</span>', en: '<span class="math-display">km/h</span>' },
+                        { ar: '<span class="math-display">m</span>', en: '<span class="math-display">m</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'وحدة العجلة هي متر/ثانية² (m/s²)', en: 'The unit of acceleration is meters per second squared (m/s²)' }
+                }
+            ]
+        },
+        {
+            id: 'sec3',
+            title: { ar: '🔹 الجزء 3: معادلات الحركة', en: ' Part 3: Equations of Motion' },
+            questions: [
+                {
+                    q: { ar: 'أي من المعادلات التالية صحيحة للحركة المتسارعة بانتظام؟', en: 'Which of the following equations is correct for uniformly accelerated motion?' },
+                    options: [
+                        { ar: '<span class="math-display">v_f² = v_i² + 2ad</span>', en: '<span class="math-display">v_f² = v_i² + 2ad</span>' },
+                        { ar: '<span class="math-display">v_f = v_i + ad</span>', en: '<span class="math-display">v_f = v_i + ad</span>' },
+                        { ar: '<span class="math-display">d = v_i + at</span>', en: '<span class="math-display">d = v_i + at</span>' },
+                        { ar: '<span class="math-display">a = v × t</span>', en: '<span class="math-display">a = v × t</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'v_f² = v_i² + 2ad هي إحدى معادلات الحركة المتسارعة', en: 'v_f² = v_i² + 2ad is one of the equations of uniformly accelerated motion' }
+                },
+                {
+                    q: { ar: 'سيارة تبدأ من السكون وتتسارع بمقدار <span class="math-display">3 m/s²</span>. ما المسافة التي تقطعها في <span class="math-display">4 s</span>؟', en: 'A car starts from rest and accelerates at <span class="math-display">3 m/s²</span>. What distance does it cover in <span class="math-display">4 s</span>?' },
+                    options: [
+                        { ar: '<span class="math-display">24 m</span>', en: '<span class="math-display">24 m</span>' },
+                        { ar: '<span class="math-display">12 m</span>', en: '<span class="math-display">12 m</span>' },
+                        { ar: '<span class="math-display">48 m</span>', en: '<span class="math-display">48 m</span>' },
+                        { ar: '<span class="math-display">6 m</span>', en: '<span class="math-display">6 m</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'd = v_i·t + ½at² = 0 + ½(3)(16) = 24 m', en: 'd = v_i·t + ½at² = 0 + ½(3)(16) = 24 m' }
+                },
+                {
+                    q: { ar: 'جسم يتحرك بسرعة ابتدائية <span class="math-display">5 m/s</span> وينتهي بسرعة <span class="math-display">15 m/s</span> خلال مسافة <span class="math-display">20 m</span>. ما العجلة؟', en: 'An object moves at initial speed <span class="math-display">5 m/s</span> and ends at <span class="math-display">15 m/s</span> over distance <span class="math-display">20 m</span>. What is the acceleration?' },
+                    options: [
+                        { ar: '<span class="math-display">5 m/s²</span>', en: '<span class="math-display">5 m/s²</span>' },
+                        { ar: '<span class="math-display">10 m/s²</span>', en: '<span class="math-display">10 m/s²</span>' },
+                        { ar: '<span class="math-display">2.5 m/s²</span>', en: '<span class="math-display">2.5 m/s²</span>' },
+                        { ar: '<span class="math-display">20 m/s²</span>', en: '<span class="math-display">20 m/s²</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'v_f² = v_i² + 2ad → 225 = 25 + 40a → a = 5 m/s²', en: 'v_f² = v_i² + 2ad → 225 = 25 + 40a → a = 5 m/s²' }
+                },
+                {
+                    q: { ar: 'ما الصيغة التي تربط المسافة والسرعة الابتدائية والزمن والعجلة؟', en: 'What is the formula linking distance, initial velocity, time and acceleration?' },
+                    options: [
+                        { ar: '<span class="math-display">d = v_i·t + ½at²</span>', en: '<span class="math-display">d = v_i·t + ½at²</span>' },
+                        { ar: '<span class="math-display">d = v_i + at</span>', en: '<span class="math-display">d = v_i + at</span>' },
+                        { ar: '<span class="math-display">d = v_i × t</span>', en: '<span class="math-display">d = v_i × t</span>' },
+                        { ar: '<span class="math-display">d = ½at²</span>', en: '<span class="math-display">d = ½at²</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'd = v_i·t + ½at²', en: 'd = v_i·t + ½at²' }
+                }
+            ]
+        },
+        {
+            id: 'sec4',
+            title: { ar: '🔹 الجزء 4: التمثيل البياني', en: '🔹 Part 4: Graphical Representation' },
+            questions: [
+                {
+                    q: { ar: 'في منحنى (السرعة-الزمن)، ماذا يمثل ميل الخط؟', en: 'In a velocity-time graph, what does the slope of the line represent?' },
+                    options: [
+                        { ar: 'العجلة', en: 'Acceleration' },
+                        { ar: 'المسافة', en: 'Distance' },
+                        { ar: 'السرعة', en: 'Velocity' },
+                        { ar: 'الزمن', en: 'Time' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'ميل منحنى السرعة-الزمن يمثل العجلة', en: 'The slope of a velocity-time graph represents acceleration' }
+                },
+                {
+                    q: { ar: 'في منحنى (المسافة-الزمن)، ماذا يمثل الخط الأفقي؟', en: 'In a distance-time graph, what does a horizontal line represent?' },
+                    options: [
+                        { ar: 'الجسم ثابت (لا يتحرك)', en: 'The object is stationary (not moving)' },
+                        { ar: 'الجسم يتحرك بسرعة ثابتة', en: 'The object moves at constant speed' },
+                        { ar: 'الجسم يتسارع', en: 'The object is accelerating' },
+                        { ar: 'الجسم يتباطأ', en: 'The object is decelerating' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'الخط الأفقي في منحنى المسافة-الزمن يعني أن المسافة لا تتغير، أي الجسم ثابت', en: 'A horizontal line in a distance-time graph means distance does not change, so the object is stationary' }
+                },
+                {
+                    q: { ar: 'إذا كان منحنى السرعة-الزمن خطاً مستقيماً مائلاً للأعلى، ماذا يعني ذلك؟', en: 'If a velocity-time graph is a straight line sloping upward, what does that mean?' },
+                    options: [
+                        { ar: 'الجسم يتسارع بانتظام', en: 'The object is accelerating uniformly' },
+                        { ar: 'الجسم يتحرك بسرعة ثابتة', en: 'The object moves at constant speed' },
+                        { ar: 'الجسم ثابت', en: 'The object is stationary' },
+                        { ar: 'الجسم يتباطأ', en: 'The object is decelerating' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'الخط المستقيم المائل للأعلى في منحنى السرعة-الزمن يعني تسارع منتظم', en: 'A straight upward sloping line in a velocity-time graph means uniform acceleration' }
+                },
+                {
+                    q: { ar: 'في منحنى السرعة-الزمن، ماذا تمثل المساحة تحت المنحنى؟', en: 'In a velocity-time graph, what does the area under the curve represent?' },
+                    options: [
+                        { ar: 'المسافة المقطوعة', en: 'Distance traveled' },
+                        { ar: 'العجلة', en: 'Acceleration' },
+                        { ar: 'السرعة المتوسطة', en: 'Average speed' },
+                        { ar: 'الزمن', en: 'Time' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'المساحة تحت منحنى السرعة-الزمن تمثل المسافة المقطوعة', en: 'The area under a velocity-time graph represents the distance traveled' }
+                }
+            ]
+        },
+        {
+            id: 'sec5',
+            title: { ar: '🔹 الجزء 5: مسائل تطبيقية', en: '🔹 Part 5: Applied Problems' },
+            questions: [
+                {
+                    q: { ar: 'قطار يتحرك بسرعة <span class="math-display">30 m/s</span> ويبدأ في الكبح بعجلة <span class="math-display">-2 m/s²</span>. كم من الوقت يستغرق حتى يتوقف؟', en: 'A train moves at <span class="math-display">30 m/s</span> and starts braking with acceleration <span class="math-display">-2 m/s²</span>. How long does it take to stop?' },
+                    options: [
+                        { ar: '<span class="math-display">15 s</span>', en: '<span class="math-display">15 s</span>' },
+                        { ar: '<span class="math-display">30 s</span>', en: '<span class="math-display">30 s</span>' },
+                        { ar: '<span class="math-display">60 s</span>', en: '<span class="math-display">60 s</span>' },
+                        { ar: '<span class="math-display">10 s</span>', en: '<span class="math-display">10 s</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 't = (v_f - v_i)/a = (0 - 30)/(-2) = 15 s', en: 't = (v_f - v_i)/a = (0 - 30)/(-2) = 15 s' }
+                },
+                {
+                    q: { ar: 'صخرة تُسقط من سطح مبنى. إذا كانت تسارع الجاذبية <span class="math-display">10 m/s²</span>، فما سرعتها بعد <span class="math-display">3 s</span>؟', en: 'A rock is dropped from a building. If gravity acceleration is <span class="math-display">10 m/s²</span>, what is its speed after <span class="math-display">3 s</span>?' },
+                    options: [
+                        { ar: '<span class="math-display">30 m/s</span>', en: '<span class="math-display">30 m/s</span>' },
+                        { ar: '<span class="math-display">10 m/s</span>', en: '<span class="math-display">10 m/s</span>' },
+                        { ar: '<span class="math-display">3 m/s</span>', en: '<span class="math-display">3 m/s</span>' },
+                        { ar: '<span class="math-display">13 m/s</span>', en: '<span class="math-display">13 m/s</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'v_f = v_i + gt = 0 + (10×3) = 30 m/s', en: 'v_f = v_i + gt = 0 + (10×3) = 30 m/s' }
+                },
+                {
+                    q: { ar: 'سيارة تسير بسرعة <span class="math-display">72 km/h</span>. حول هذه السرعة إلى m/s.', en: 'A car travels at <span class="math-display">72 km/h</span>. Convert this speed to m/s.' },
+                    options: [
+                        { ar: '<span class="math-display">20 m/s</span>', en: '<span class="math-display">20 m/s</span>' },
+                        { ar: '<span class="math-display">72 m/s</span>', en: '<span class="math-display">72 m/s</span>' },
+                        { ar: '<span class="math-display">3.6 m/s</span>', en: '<span class="math-display">3.6 m/s</span>' },
+                        { ar: '<span class="math-display">259.2 m/s</span>', en: '<span class="math-display">259.2 m/s</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: '72 ÷ 3.6 = 20 m/s', en: '72 ÷ 3.6 = 20 m/s' }
+                },
+                {
+                    q: { ar: 'جسم يتحرك بسرعة ثابتة <span class="math-display">10 m/s</span> لمدة <span class="math-display">5 s</span>. ما العجلة؟', en: 'An object moves at constant speed <span class="math-display">10 m/s</span> for <span class="math-display">5 s</span>. What is the acceleration?' },
+                    options: [
+                        { ar: '<span class="math-display">0 m/s²</span>', en: '<span class="math-display">0 m/s²</span>' },
+                        { ar: '<span class="math-display">10 m/s²</span>', en: '<span class="math-display">10 m/s²</span>' },
+                        { ar: '<span class="math-display">2 m/s²</span>', en: '<span class="math-display">2 m/s²</span>' },
+                        { ar: '<span class="math-display">50 m/s²</span>', en: '<span class="math-display">50 m/s²</span>' }
+                    ],
+                    correct: 0,
+                    answer: { ar: 'عند السرعة الثابتة، العجلة = 0', en: 'At constant speed, acceleration = 0' }
+                }
+            ]
+        }
+    ]
+};
+
+function shuffleArray(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+let examData;
+let correctAnswersMap = {};
+let currentLang = 'ar';
+let timeRemaining = TOTAL_TIME;
+let timerInterval;
+
+function prepareShuffledExam() {
+    rng = mulberry32(currentSeed);
+    examData = JSON.parse(JSON.stringify(originalExamData));
+    correctAnswersMap = {};
+    let globalIdx = 0;
+    examData.sections.forEach((section) => {
+        section.questions = shuffleArray(section.questions);
+        section.questions.forEach((q) => {
+            const optionsWithCorrect = q.options.map((opt, idx) => ({ option: opt, isCorrect: idx === q.correct }));
+            const shuffledOptions = shuffleArray(optionsWithCorrect);
+            q.options = shuffledOptions.map(o => o.option);
+            q.correct = shuffledOptions.findIndex(o => o.isCorrect);
+            correctAnswersMap[globalIdx] = String.fromCharCode(97 + q.correct);
+            globalIdx++;
+        });
+    });
+}
+
+function reshuffleExam() {
+    const msg = currentLang === 'ar' ? '🔄 سيتم إنشاء أسئلة جديدة ومسح إجاباتك الحالية. هل أنت متأكد؟' : '🔄 New questions will be generated and current answers cleared. Are you sure?';
+    if (confirm(msg)) {
+        currentSeed = Date.now(); timeRemaining = TOTAL_TIME; answersVisible = false;
+        prepareShuffledExam(); renderExam(); saveState();
+        alert(currentLang === 'ar' ? ' تم تغيير الأسئلة! حظاً موفقاً! ' : '🎲 Questions changed! Good luck! 🍀');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.getElementById('btn-ar').classList.toggle('active', lang === 'ar');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.body.classList.toggle('en-mode', lang === 'en');
+    document.querySelectorAll('[data-ar][data-en]').forEach(el => {
+        el.innerHTML = lang === 'ar' ? el.getAttribute('data-ar') : el.getAttribute('data-en');
+    });
+    renderExam(); saveState(false);
+}
+
+function renderExam() {
+    const container = document.getElementById('exam-content');
+    const labels = { ar: { option: ['أ', 'ب', 'ج', 'د'], answer: '✅ الإجابة:' }, en: { option: ['A', 'B', 'C', 'D'], answer: '✅ Answer:' } };
+    const lbl = labels[currentLang]; const isRTL = currentLang === 'ar';
+    let html = ''; let globalIdx = 0;
+    examData.sections.forEach((section) => {
+        html += `<section class="bg-white p-6 rounded-2xl shadow-lg border-2 border-red-100">
+            <h2 class="text-xl font-bold mb-4 text-red-700">${section.title[currentLang]}</h2>
+            <ol class="space-y-4 text-sm">`;
+        section.questions.forEach((q) => {
+            const bs = isRTL ? 'border-r-4 pr-4' : 'border-l-4 pl-4';
+            html += `<li class="${bs} border-red-400 py-2" id="q-${globalIdx}">
+                <strong>${globalIdx + 1}.</strong> ${q.q[currentLang]}<br>`;
+            q.options.forEach((opt, oIdx) => {
+                const rs = isRTL ? 'mr-4 ml-2' : 'ml-4 mr-2';
+                html += `<label class="cursor-pointer block mt-1 ${isRTL ? 'mr-4' : 'ml-4'} hover:bg-red-50 rounded-lg p-1 transition">
+                    <input type="radio" name="q${globalIdx}" value="${String.fromCharCode(97 + oIdx)}" class="${rs}">
+                    ${lbl.option[oIdx]}) ${opt[currentLang]}</label>`;
+            });
+            html += `<div class="answer-box text-green-700 mt-2 font-medium ${answersVisible ? '' : 'hidden'} bg-green-50 rounded-lg p-2">
+                ${lbl.answer} ${lbl.option[q.correct]}) ${q.options[q.correct][currentLang]} — ${q.answer[currentLang]}</div></li>`;
+            globalIdx++;
+        });
+        html += `</ol></section>`;
+    });
+    container.innerHTML = html;
+}
+
+function startTimer() {
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+        timeRemaining--; updateTimerDisplay();
+        if (timeRemaining % 60 === 0) saveState(false);
+        if (timeRemaining <= 600) document.getElementById('timer').classList.add('timer-warning');
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            alert(currentLang === 'ar' ? "⏰ انتهى الوقت!" : "⏰ Time's up!");
+            gradeExam();
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const m = Math.floor(timeRemaining / 60); const s = timeRemaining % 60;
+    document.getElementById('timer').textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
+
+function toggleAnswers() {
+    answersVisible = !answersVisible;
+    document.querySelectorAll('.answer-box').forEach(el => el.classList.toggle('hidden', !answersVisible));
+    saveState(false);
+}
+
+function gradeExam() {
+    let correctCount = 0;
+    const sectionScores = new Array(TOTAL_SECTIONS).fill(0);
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+        const sel = document.querySelector(`input[name="q${i}"]:checked`);
+        const li = document.getElementById(`q-${i}`);
+        if (li) {
+            const isCorrect = sel && sel.value === correctAnswersMap[i];
+            if (isCorrect) { correctCount++; li.classList.add('correct'); li.classList.remove('incorrect'); sectionScores[Math.floor(i / QUESTIONS_PER_SECTION)]++; }
+            else { li.classList.add('incorrect'); li.classList.remove('correct'); }
+        }
+    }
+    const score = Math.round((correctCount / TOTAL_QUESTIONS) * 100);
+    document.getElementById('res-total').textContent = `${score} / 100`;
+    document.getElementById('res-name').textContent = document.getElementById('studentName').value || (currentLang === 'ar' ? 'بطل' : 'Champion');
+    document.getElementById('res-date').textContent = new Date().toLocaleDateString(currentLang === 'ar' ? 'ar-AE' : 'en-US');
+    const pc = document.getElementById('sections-performance'); pc.innerHTML = '';
+    examData.sections.forEach((s, idx) => {
+        pc.innerHTML += `<div class="flex justify-between items-center"><span class="text-gray-700">${s.title[currentLang]}</span><span class="font-bold text-red-700">${sectionScores[idx]}/${QUESTIONS_PER_SECTION}</span></div>`;
+    });
+    const badge = document.getElementById('success-badge');
+    document.getElementById('success-percent').textContent = `${score}%`;
+    if (currentLang === 'ar') {
+        if (score >= 90) { badge.textContent = '🌟 ممتاز جداً!'; badge.className = 'success-badge grade-excellent'; }
+        else if (score >= 75) { badge.textContent = '👏 ممتاز!'; badge.className = 'success-badge grade-good'; }
+        else if (score >= 50) { badge.textContent = '👍 جيد'; badge.className = 'success-badge grade-pass'; }
+        else { badge.textContent = '💪 حاول مرة أخرى'; badge.className = 'success-badge grade-fail'; }
+    } else {
+        if (score >= 90) { badge.textContent = '🌟 Outstanding!'; badge.className = 'success-badge grade-excellent'; }
+        else if (score >= 75) { badge.textContent = '👏 Excellent!'; badge.className = 'success-badge grade-good'; }
+        else if (score >= 50) { badge.textContent = '👍 Good'; badge.className = 'success-badge grade-pass'; }
+        else { badge.textContent = '💪 Try Again'; badge.className = 'success-badge grade-fail'; }
+    }
+    document.getElementById('results-panel').classList.remove('hidden');
+    document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });
+    if (timerInterval) clearInterval(timerInterval);
+}
+
+function sendResultsToEmail() {
+    const btn = document.getElementById('sendEmailBtn');
+    const status = document.getElementById('emailStatus');
+    btn.disabled = true;
+    btn.textContent = currentLang === 'ar' ? '⏳ جاري الإرسال...' : '⏳ Sending...';
+    const name = document.getElementById('studentName').value || 'N/A';
+    const studentClass = document.getElementById('studentClass').value || 'N/A';
+    const date = document.getElementById('examDate').value || new Date().toLocaleDateString();
+    const score = document.getElementById('res-total').textContent;
+    const successRate = document.getElementById('success-percent').textContent;
+    const badge = document.getElementById('success-badge').textContent;
+    let questionsHTML = ''; let globalIdx = 0;
+    examData.sections.forEach((section, sectionIdx) => {
+        questionsHTML += `<tr style="background:linear-gradient(135deg,#dc2626,#ef4444);color:white;"><td colspan="5" style="padding:12px;font-weight:bold;"> ${currentLang==='ar'?'القسم':'Section'} ${sectionIdx+1}: ${section.title[currentLang]}</td></tr>`;
+        section.questions.forEach((q) => {
+            const sel = document.querySelector(`input[name="q${globalIdx}"]:checked`);
+            const sv = sel ? sel.value : null; const cv = correctAnswersMap[globalIdx]; const ic = sv === cv;
+            let sat = currentLang==='ar'?'❌ لم يجب':'❌ No answer'; let sac = '#dc2626';
+            if (sv) { const si = sv.charCodeAt(0)-97; sat = q.options[si][currentLang]; sac = ic?'#059669':'#dc2626'; }
+            const cat = q.options[q.correct][currentLang];
+            const rb = ic?'#f0fdf4':'#fef2f2'; const bl = ic?'4px solid #10b981':'4px solid #ef4444';
+            questionsHTML += `<tr style="background:${rb};border-right:${bl};"><td style="padding:10px;border:1px solid #e5e7eb;text-align:center;font-weight:bold;">${globalIdx+1}</td><td style="padding:10px;border:1px solid #e5e7eb;"><strong style="color:#dc2626;">${currentLang==='ar'?'❓ السؤال:':'❓ Question:'}</strong><br><span style="font-size:13px;">${q.q[currentLang]}</span></td><td style="padding:10px;border:1px solid #e5e7eb;"><strong style="color:${sac};">${currentLang==='ar'?'✍️ إجابة الطالب:':'✍️ Student:'}</strong><br><span style="color:${sac};font-size:13px;">${sat}</span></td><td style="padding:10px;border:1px solid #e5e7eb;"><strong style="color:#059669;">${currentLang==='ar'?'✅ الصحيحة:':'✅ Correct:'}</strong><br><span style="color:#059669;font-size:13px;">${cat}</span></td><td style="padding:10px;border:1px solid #e5e7eb;text-align:center;">${ic?'<span style="font-size:24px;">✅</span>':'<span style="font-size:24px;">❌</span>'}</td></tr>`;
+            globalIdx++;
+        });
+    });
+    const answersHTML = `<div style="font-family:'Segoe UI',Tahoma,Arial;direction:${currentLang==='ar'?'rtl':'ltr'};"><div style="background:linear-gradient(135deg,#dc2626,#ef4444);color:white;padding:20px;border-radius:10px 10px 0 0;text-align:center;"><h2 style="margin:0;">${currentLang==='ar'?'نتيجة امتحان السرعة والعجلة':'Speed and Acceleration Exam Result'}</h2><p style="margin:5px 0 0;opacity:0.9;">Grade 9 General - Physics</p></div><div style="background:#fef2f2;padding:15px;"><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;font-weight:bold;color:#dc2626;">${currentLang==='ar'?'😊 الاسم:':'😊 Name:'}</td><td style="padding:8px;">${name}</td><td style="padding:8px;font-weight:bold;color:#dc2626;">${currentLang==='ar'?'🏫 الشعبة:':'🏫 Class:'}</td><td style="padding:8px;">${studentClass}</td></tr><tr><td style="padding:8px;font-weight:bold;color:#dc2626;">${currentLang==='ar'?'📅 التاريخ:':' Date:'}</td><td style="padding:8px;">${date}</td><td style="padding:8px;font-weight:bold;color:#dc2626;">${currentLang==='ar'?'🏆 التقدير:':'🏆 Grade:'}</td><td style="padding:8px;">${badge}</td></tr></table></div><div style="background:white;padding:20px;text-align:center;"><div style="display:inline-block;margin:0 15px;"><div style="font-size:32px;font-weight:bold;color:#dc2626;">${score}</div><div style="color:#6b7280;font-size:13px;">${currentLang==='ar'?'الدرجة':'Score'}</div></div><div style="display:inline-block;margin:0 15px;"><div style="font-size:32px;font-weight:bold;color:#059669;">${successRate}%</div><div style="color:#6b7280;font-size:13px;">${currentLang==='ar'?'النسبة':'Rate'}</div></div></div><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#dc2626;color:white;"><th style="padding:10px;border:1px solid #ef4444;">#</th><th style="padding:10px;border:1px solid #ef4444;">${currentLang==='ar'?'السؤال':'Question'}</th><th style="padding:10px;border:1px solid #ef4444;">${currentLang==='ar'?'إجابة الطالب':'Student'}</th><th style="padding:10px;border:1px solid #ef4444;">${currentLang==='ar'?'الصحيحة':'Correct'}</th><th style="padding:10px;border:1px solid #ef4444;">${currentLang==='ar'?'النتيجة':'Result'}</th></tr></thead><tbody>${questionsHTML}</tbody></table><div style="background:linear-gradient(135deg,#fef2f2,#fee2e2);padding:15px;border-radius:0 0 10px 10px;"><p style="margin:0;color:#dc2626;text-align:center;">📐 <strong>${currentLang==='ar'?'أحسنت يا بطل! استمر في إتقان الفيزياء!':'Great job! Keep mastering Physics!'}</strong> 📐</p><p style="margin:5px 0 0;color:#dc2626;text-align:center;font-size:12px;">${currentLang==='ar'?'تم الإرسال تلقائياً | Mr. Mohammed Hesham':'Auto-sent | Mr. Mohammed Hesham'}</p></div></div>`;
+    emailjs.send(SERVICE_ID, TEMPLATE_ID, { to_email: TARGET_EMAIL, student_name: name, student_class: studentClass, exam_date: date, total_score: score, success_rate: successRate, grade: badge, answers_table: answersHTML }).then(() => {
+        status.textContent = currentLang==='ar'?'✅ تم الإرسال بنجاح!':'✅ Sent successfully!'; status.style.color = '#059669'; btn.textContent = currentLang==='ar'?'✓ تم':'✓ Sent';
+    }).catch(err => {
+        status.textContent = currentLang==='ar'?' حدث خطأ':'❌ Error'; status.style.color = '#dc2626'; btn.disabled = false; btn.textContent = currentLang==='ar'?' حاول مرة أخرى':'📧 Try Again'; console.error(err);
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const saved = loadState();
+    if (saved && saved.seed) {
+        currentSeed = saved.seed; currentLang = saved.lang || 'ar';
+        timeRemaining = saved.timeRemaining !== undefined ? saved.timeRemaining : TOTAL_TIME;
+        answersVisible = saved.answersVisible || false;
+        document.documentElement.lang = currentLang;
+        document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+        document.getElementById('btn-ar').classList.toggle('active', currentLang === 'ar');
+        document.getElementById('btn-en').classList.toggle('active', currentLang === 'en');
+        document.body.classList.toggle('en-mode', currentLang === 'en');
+        document.querySelectorAll('[data-ar][data-en]').forEach(el => { el.innerHTML = currentLang === 'ar' ? el.getAttribute('data-ar') : el.getAttribute('data-en'); });
+    } else { currentSeed = Date.now(); }
+    prepareShuffledExam(); renderExam();
+    if (saved) {
+        if (saved.studentName) document.getElementById('studentName').value = saved.studentName;
+        if (saved.studentClass) document.getElementById('studentClass').value = saved.studentClass;
+        if (saved.examDate) document.getElementById('examDate').value = saved.examDate;
+        if (saved.answers) restoreAnswers(saved.answers);
+    }
+    setupAnswerListeners(); setupInputListeners(); startTimer();
+});
+window.addEventListener('beforeunload', () => saveState(false));
+</script>
+</body>
+</html>
